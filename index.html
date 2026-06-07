@@ -168,6 +168,34 @@ body{
 .profile-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .profile-row.full{grid-template-columns:1fr}
 .profile-indicator{font-size:11px;padding:2px 8px;background:rgba(99,102,241,.12);color:var(--accent2);border-radius:10px;cursor:pointer;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Slogan */
+.slogan{text-align:center;font-size:11px;color:var(--fg2);opacity:.6;margin-top:-8px;letter-spacing:1px}
+
+/* Target Selector */
+.target-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg2);border-radius:var(--radius);border:1px solid rgba(255,255,255,.04)}
+.target-bar select{flex:1;padding:8px 10px;background:var(--bg3);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm);color:var(--fg);font-size:13px;outline:none}
+.target-bar select:focus{border-color:var(--accent)}
+.target-mini-btn{padding:6px 10px;font-size:11px;background:var(--bg3);border:none;color:var(--fg2);border-radius:6px;cursor:pointer;transition:.15s;white-space:nowrap}
+.target-mini-btn:hover{background:var(--accent);color:#fff}
+
+/* Target Edit Modal */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal-box{background:var(--bg2);border-radius:var(--radius);padding:20px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto;border:1px solid rgba(255,255,255,.08)}
+.modal-box h3{font-size:16px;margin-bottom:14px;color:var(--accent2)}
+.modal-box .btn-row{display:flex;gap:8px;margin-top:14px}
+.modal-box .btn-row .btn{flex:1;justify-content:center}
+
+/* Target List */
+.target-list-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
+.target-list-item:last-child{border-bottom:none}
+.target-list-name{font-weight:600}
+.target-list-info{font-size:11px;color:var(--fg2)}
+.target-list-actions{display:flex;gap:4px}
+.target-list-actions button{font-size:11px;padding:3px 8px;border:none;border-radius:4px;cursor:pointer;background:var(--bg3);color:var(--fg2);transition:.15s}
+.target-list-actions button:hover{background:var(--accent);color:#fff}
+.target-list-actions button.del:hover{background:var(--red);color:#fff}
 </style>
 </head>
 <body>
@@ -176,7 +204,10 @@ body{
   <div class="header">
     <div class="logo">
       <div class="logo-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C12 2 8 6 8 10C8 11 8.5 13 9 14L12 22L15 14C15.5 13 16 11 16 10C16 6 12 2 12 2Z" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 14L12 8" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="4" x2="6" y2="8" stroke="#fff" stroke-width="0.8" stroke-linecap="round" opacity="0.6"/><line x1="12" y1="4" x2="12" y2="7" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity="0.7"/><line x1="12" y1="4" x2="18" y2="8" stroke="#fff" stroke-width="0.8" stroke-linecap="round" opacity="0.6"/></svg></div>
-      <h1>聊天军师</h1>
+      <div>
+        <h1 style="font-size:17px">聊天军师</h1>
+        <div class="slogan">军师系统，让交流更简单</div>
+      </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="profileBadge" class="profile-indicator" style="display:none" onclick="toggleSettings()">👤</span>
@@ -302,6 +333,22 @@ body{
       <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
       <button class="btn btn-ghost" onclick="loadDefaultPrompt()">恢复默认提示词</button>
     </div>
+
+    <!-- Target Management -->
+    <div class="card-header" style="margin-top:20px">💬 聊天对象管理</div>
+    <div class="info-tip" style="margin-bottom:10px">设置多个聊天对象，分析时可快速切换</div>
+    <div id="targetList" class="card" style="background:var(--bg3);max-height:200px;overflow-y:auto">
+      <div style="text-align:center;color:var(--fg2);padding:16px;font-size:13px">暂无聊天对象，点击下方按钮添加</div>
+    </div>
+    <button class="btn btn-ghost" style="margin-top:8px;width:100%;justify-content:center" onclick="openTargetModal()">＋ 添加聊天对象</button>
+  </div>
+
+  <!-- Target Selector -->
+  <div class="target-bar">
+    <span style="font-size:12px;color:var(--fg2);white-space:nowrap">💬 聊天对象</span>
+    <select id="targetSelect" onchange="switchTarget()"><option value="">未设置</option></select>
+    <button class="target-mini-btn" onclick="openTargetModal()" title="添加对象">＋</button>
+    <button class="target-mini-btn" onclick="editCurrentTarget()" title="编辑当前对象">✎</button>
   </div>
 
   <!-- Profile Setup (first-time) -->
@@ -435,6 +482,48 @@ body{
 
 <div class="toast" id="toast"></div>
 
+<!-- Target Edit Modal -->
+<div class="modal-overlay" id="targetModal">
+  <div class="modal-box">
+    <h3 id="targetModalTitle">添加聊天对象</h3>
+    <input type="hidden" id="targetEditIndex" value="-1">
+    <div class="input-group">
+      <label>对象名称 *</label>
+      <input type="text" id="targetName" placeholder="如：小美、同事张姐…">
+    </div>
+    <div class="profile-row">
+      <div class="input-group">
+        <label>性别</label>
+        <select id="targetGender"><option value="">请选择</option><option value="女">女</option><option value="男">男</option></select>
+      </div>
+      <div class="input-group">
+        <label>关系阶段</label>
+        <select id="targetStage"><option value="">请选择</option><option value="刚认识">刚认识</option><option value="朋友">朋友</option><option value="暧昧中">暧昧中</option><option value="追求中">追求中</option><option value="恋爱中">恋爱中</option></select>
+      </div>
+    </div>
+    <div class="profile-row" style="margin-top:8px">
+      <div class="input-group">
+        <label>她/他的性格</label>
+        <input type="text" id="targetPersonality" placeholder="如：活泼开朗、有点高冷…">
+      </div>
+      <div class="input-group">
+        <label>你的目标</label>
+        <select id="targetGoal"><option value="">请选择</option><option value="升温感情">升温感情</option><option value="维持好感">维持好感</option><option value="挽回关系">挽回关系</option><option value="从朋友变恋人">从朋友变恋人</option><option value="日常聊天">日常聊天</option></select>
+      </div>
+    </div>
+    <div class="profile-row full" style="margin-top:8px">
+      <div class="input-group">
+        <label>补充说明</label>
+        <textarea id="targetNotes" rows="2" placeholder="如：认识多久了、怎么认识的…"></textarea>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="closeTargetModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveTarget()">保存</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ===== Storage =====
 const LS = {
@@ -490,7 +579,19 @@ const el = {
   ocrProgress: $('ocrProgress'),
   ocrProgressText: $('ocrProgressText'),
   ocrProgressBar: $('ocrProgressBar'),
-  ocrFileInput: $('ocrFileInput')
+  ocrFileInput: $('ocrFileInput'),
+  // Target refs
+  targetSelect: $('targetSelect'),
+  targetList: $('targetList'),
+  targetModal: $('targetModal'),
+  targetModalTitle: $('targetModalTitle'),
+  targetEditIndex: $('targetEditIndex'),
+  targetName: $('targetName'),
+  targetGender: $('targetGender'),
+  targetStage: $('targetStage'),
+  targetPersonality: $('targetPersonality'),
+  targetGoal: $('targetGoal'),
+  targetNotes: $('targetNotes')
 };
 
 // ===== Init =====
@@ -530,11 +631,17 @@ function init(){
   app.addEventListener('drop', e => { e.preventDefault(); el.ocrArea.classList.remove('drag'); handleDrop(e); });
   // OCR: click upload area
   el.ocrArea.addEventListener('click', () => el.ocrFileInput.click());
+  // Modal: click outside to close
+  el.targetModal.addEventListener('click', e => { if(e.target === el.targetModal) closeTargetModal(); });
 
   // First-run: show API key warning or profile setup
   if(!LS.get('apiKey','')){
     el.tokenWarning.classList.add('show');
   }
+
+  // Init targets
+  initTargets();
+
   if(!LS.get('profile','')){
     el.profileSetup.style.display = 'block';
   }
@@ -713,6 +820,160 @@ function clearOCR(){
   el.ocrProgress.classList.remove('show');
 }
 
+// ===== Target Management =====
+let targets = LS.get('targets',[]);
+let currentTargetId = LS.get('currentTarget','');
+
+function initTargets(){
+  renderTargetSelect();
+  renderTargetList();
+  if(currentTargetId) el.targetSelect.value = currentTargetId;
+}
+
+function renderTargetSelect(){
+  const sel = el.targetSelect;
+  sel.innerHTML = '<option value="">未选择对象</option>';
+  targets.forEach((t,i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = (t.emoji||'💬') + ' ' + t.name + (t.stage ? ' · ' + t.stage : '');
+    sel.appendChild(opt);
+  });
+  if(currentTargetId !== '' && targets[currentTargetId]){
+    sel.value = currentTargetId;
+  }
+}
+
+function renderTargetList(){
+  const list = el.targetList;
+  if(targets.length === 0){
+    list.innerHTML = '<div style="text-align:center;color:var(--fg2);padding:16px;font-size:13px">暂无聊天对象，点击下方按钮添加</div>';
+    return;
+  }
+  let html = '';
+  targets.forEach((t,i) => {
+    const info = [t.gender,t.stage,t.personality].filter(Boolean).join(' · ') || '未设置详情';
+    html += `<div class="target-list-item">
+      <div>
+        <div class="target-list-name">${t.emoji||'💬'} ${t.name}</div>
+        <div class="target-list-info">${info}</div>
+      </div>
+      <div class="target-list-actions">
+        <button onclick="openTargetModal(${i})">✎</button>
+        <button class="del" onclick="deleteTarget(${i})">✕</button>
+      </div>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+
+function switchTarget(){
+  currentTargetId = el.targetSelect.value;
+  LS.set('currentTarget', currentTargetId);
+}
+
+function openTargetModal(index = -1){
+  el.targetEditIndex.value = index;
+  if(index >= 0 && targets[index]){
+    el.targetModalTitle.textContent = '编辑聊天对象';
+    const t = targets[index];
+    el.targetName.value = t.name || '';
+    el.targetGender.value = t.gender || '';
+    el.targetStage.value = t.stage || '';
+    el.targetPersonality.value = t.personality || '';
+    el.targetGoal.value = t.goal || '';
+    el.targetNotes.value = t.notes || '';
+  } else {
+    el.targetModalTitle.textContent = '添加聊天对象';
+    el.targetName.value = '';
+    el.targetGender.value = '';
+    el.targetStage.value = '';
+    el.targetPersonality.value = '';
+    el.targetGoal.value = '';
+    el.targetNotes.value = '';
+  }
+  el.targetModal.classList.add('show');
+  setTimeout(()=>el.targetName.focus(),100);
+}
+
+function editCurrentTarget(){
+  if(currentTargetId !== '' && targets[currentTargetId]){
+    openTargetModal(parseInt(currentTargetId));
+  } else {
+    showToast('请先选择一个聊天对象','error');
+  }
+}
+
+function closeTargetModal(){
+  el.targetModal.classList.remove('show');
+}
+
+function saveTarget(){
+  const name = el.targetName.value.trim();
+  if(!name){ showToast('请输入对象名称','error'); return; }
+  const idx = parseInt(el.targetEditIndex.value);
+  const obj = {
+    name,
+    emoji: '' + (el.targetGender.value === '男' ? '👨' : el.targetGender.value === '女' ? '👩' : '💬'),
+    gender: el.targetGender.value,
+    stage: el.targetStage.value,
+    personality: el.targetPersonality.value.trim(),
+    goal: el.targetGoal.value,
+    notes: el.targetNotes.value.trim(),
+    history: (idx>=0&&targets[idx]?.history)||[]
+  };
+  if(idx >= 0 && targets[idx]){
+    targets[idx] = obj;
+    if(currentTargetId === String(idx)){
+      el.targetSelect.value = idx;
+    }
+  } else {
+    targets.push(obj);
+    currentTargetId = String(targets.length - 1);
+    LS.set('currentTarget', currentTargetId);
+  }
+  LS.set('targets', targets);
+  closeTargetModal();
+  renderTargetSelect();
+  renderTargetList();
+  updateTargetBadge();
+  showToast('对象已保存 ✅');
+}
+
+function deleteTarget(idx){
+  if(!confirm('确定删除「'+targets[idx].name+'」？')) return;
+  targets.splice(idx, 1);
+  if(currentTargetId === String(idx)){
+    currentTargetId = '';
+  } else if(parseInt(currentTargetId) > idx){
+    currentTargetId = String(parseInt(currentTargetId) - 1);
+  }
+  LS.set('targets', targets);
+  LS.set('currentTarget', currentTargetId);
+  renderTargetSelect();
+  renderTargetList();
+  updateTargetBadge();
+}
+
+function updateTargetBadge(){
+  if(currentTargetId !== '' && targets[currentTargetId]){
+    // Sync target with select
+    el.targetSelect.value = currentTargetId;
+  }
+}
+
+function getTargetPrompt(){
+  if(currentTargetId === '' || !targets[currentTargetId]) return '';
+  const t = targets[currentTargetId];
+  const parts = [`当前聊天对象：${t.name}`];
+  if(t.gender) parts.push('性别：'+t.gender);
+  if(t.stage) parts.push('关系阶段：'+t.stage);
+  if(t.personality) parts.push('对方性格：'+t.personality);
+  if(t.goal) parts.push('你的目标：'+t.goal);
+  if(t.notes) parts.push('补充：'+t.notes);
+  return '\n\n## 聊天对象信息\n' + parts.join('，') + '\n\n请根据以上对象信息，量身定制分析和回复建议。';
+}
+
 async function runOCR(file){
   el.ocrProgress.classList.add('show');
   el.ocrProgressText.textContent = '识别中...';
@@ -803,8 +1064,16 @@ async function analyze(){
   // Build full system prompt with profile
   let fullPrompt = systemPrompt;
   if(profile && profile !== '用户选择了跳过'){
-    fullPrompt += '\n\n## 当前用户画像\n' + profile + '\n\n请根据以上用户画像调整回复的语气、风格和建议内容。';
+    fullPrompt += '\n\n## 当前用户画像\n' + profile;
   }
+  
+  // Inject target info
+  const targetInfo = getTargetPrompt();
+  if(targetInfo){
+    fullPrompt += targetInfo;
+  }
+  
+  fullPrompt += '\n\n请根据以上用户画像和对象信息调整回复的语气、风格和建议内容。';
   
   const chatText = el.chatInput.value.trim();
 
