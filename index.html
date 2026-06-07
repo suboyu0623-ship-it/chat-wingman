@@ -1073,69 +1073,82 @@ function getTargetPrompt(){
 }
 
 function assignChatRoles(data, file){
-  const words = data.words || [];
-  if(words.length === 0) return data.text || '';
+  const lines = data.lines || [];
+  const rawText = data.text || '';
   
-  let maxX = 0, maxY = 0;
-  words.forEach(w => {
-    if(w.bbox && w.bbox.x1 > maxX) maxX = w.bbox.x1;
-    if(w.bbox && w.bbox.y1 > maxY) maxY = w.bbox.y1;
-  });
-  if(maxX === 0) return data.text || '';
+  if(lines.length === 0) return rawText;
   
-  const midline = maxX / 2;
-  const topCutoff = maxY * 0.07;    // Ignore top 7% (status bar)
-  const headerCutoff = maxY * 0.15; // Ignore header area up to 15% (contact name / "…")
-  const bottomCutoff = maxY * 0.88; // Ignore bottom 12% (toolbar/input area)
-  const lineGroups = [];
-  words.forEach(w => {
-    if(!w.bbox || !w.text || w.text.trim().length === 0) return;
-    // Skip top status bar area
-    if(w.bbox.y1 < topCutoff) return;
-    // Skip header area (contact name row with "…" button)
-    if(w.bbox.y0 < headerCutoff && w.bbox.y0 >= topCutoff) return;
-    // Skip bottom toolbar area
-    if(w.bbox.y0 > bottomCutoff) return;
-    const y = Math.round(w.bbox.y0 / 15) * 15;
-    const x = (w.bbox.x0 + w.bbox.x1) / 2;
-    let found = false;
-    for(const g of lineGroups){
-      if(Math.abs(g.y - y) < 20){
-        g.words.push({text: w.text, x});
-        g.minX = Math.min(g.minX, w.bbox.x0);
-        found = true;
-        break;
-      }
-    }
-    if(!found) lineGroups.push({y, words:[{text: w.text, x}], minX: w.bbox.x0});
-  });
-  
-  lineGroups.sort((a,b) => a.y - b.y);
-  
-  const outputLines = [];
-  let lastSide = '';
-  
-  for(const group of lineGroups){
-    if(group.words.length === 0) continue;
-    const avgX = group.words.reduce((s,w) => s + w.x, 0) / group.words.length;
-    const isRight = avgX > midline;
-    const side = isRight ? '我' : '对方';
-    const lineText = group.words.map(w => w.text).join('');
-    if(!lineText.trim()) continue;
-    if(lineText.trim().length <= 2 && /^[\d:：\s]+$/.test(lineText.trim())) continue;
-    
-    if(side === lastSide && outputLines.length > 0){
-      const last = outputLines[outputLines.length - 1];
-      if(last.startsWith(side + '：')){
-        outputLines[outputLines.length - 1] = last + lineText;
-      } else {
-        outputLines.push(side + '：' + lineText);
-      }
-    } else {
-      outputLines.push(side + '：' + lineText);
-    }
-    lastSide = side;
+  // Build line metadata
+  const lineData = [];
+  for(const line of lines){
+    if(!line.bbox || !line.text || line.text.trim().length === 0) continue;
+    const txt = line.text.trim();
+    if(txt.length <= 1 && /^[\d:：·…\s]+$/.test(txt)) continue;
+    lineData.push({
+      text: txt,
+      x0: line.bbox.x0, x1: line.bbox.x1,
+      xc: (line.bbox.x0 + line.bbox.x1) / 2,
+      y0: line.bbox.y0, y1: line.bbox.y1,
+      yc: (line.bbox.y0 + line.bbox.y1) / 2
+    });
   }
+  
+  if(lineData.length === 0) return rawText;
+  
+  // Get actual text extent
+  const maxX = Math.max(...lineData.map(l => l.x1));
+  const maxY = Math.max(...lineData.map(l => l.y1));
+  
+  // WeChat layout: avatar ~12% width on left → other person's text starts at ~12-15%
+  // My text (right side, no avatar) starts at ~40-50% and extends to ~85-95%
+  // Natural gap exists between left and right text clusters
+  // Use x0 clustering to find the split point
+  
+  // Collect all x0 positions and find the gap
+  const x0s = lineData.map(l => l.x0).sort((a,b) => a-b);
+  let bestGap = 0, splitPoint = maxX * 0.42;
+  for(let i=0; i<x0s.length-1; i++){
+    const mid = (x0s[i] + x0s[i+1]) / 2;
+    // Look for gaps in the 25%-65% range (where left/right split happens)
+    if(mid > maxX * 0.2 && mid < maxX * 0.7){
+      const gap = x0s[i+1] - x0s[i];
+      if(gap > bestGap && gap > maxX * 0.04){
+        bestGap = gap;
+        splitPoint = mid;
+      }
+    }
+  }
+  
+  // Cutoff zones
+  const topCutoff = maxY * 0.07;
+  const headerCutoff = maxY * 0.15;
+  const bottomCutoff = maxY * 0.88;
+  
+  // Assign sides and group by bubble
+  const outputLines = [];
+  let lastSide = '', lastText = '';
+  
+  for(const l of lineData){
+    // Skip non-chat areas
+    if(l.y1 < topCutoff) continue;
+    if(l.y0 < headerCutoff && l.y0 >= topCutoff) continue;
+    if(l.y0 > bottomCutoff) continue;
+    
+    // Determine side: use x-center relative to split point
+    const isRight = l.xc > splitPoint;
+    const side = isRight ? '我' : '对方';
+    
+    if(side === lastSide){
+      // Same side as previous line → same bubble → append
+      lastText += l.text;
+    } else {
+      // Side changed → new bubble → push previous
+      if(lastText) outputLines.push(lastSide + '：' + lastText);
+      lastSide = side;
+      lastText = l.text;
+    }
+  }
+  if(lastText) outputLines.push(lastSide + '：' + lastText);
   
   return outputLines.join('\n');
 }
