@@ -67,7 +67,7 @@ body{
 .info-tip{font-size:11px;color:var(--fg2);margin-top:4px}
 
 /* Input area */
-.chat-input{min-height:160px;resize:vertical;line-height:1.6}
+.chat-input{min-height:200px;resize:vertical;line-height:1.6;width:calc(100% - 32px);margin:0 16px;border-radius:var(--radius)}
 .char-count{text-align:right;font-size:11px;color:var(--fg2);margin-top:4px}
 .action-bar{display:flex;gap:8px;margin-top:12px}
 
@@ -147,7 +147,7 @@ body{
   <!-- Header -->
   <div class="header">
     <div class="logo">
-      <div class="logo-icon">🗡️</div>
+      <div class="logo-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C12 2 8 6 8 10C8 11 8.5 13 9 14L12 22L15 14C15.5 13 16 11 16 10C16 6 12 2 12 2Z" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 14L12 8" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="4" x2="6" y2="8" stroke="#fff" stroke-width="0.8" stroke-linecap="round" opacity="0.6"/><line x1="12" y1="4" x2="12" y2="7" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity="0.7"/><line x1="12" y1="4" x2="18" y2="8" stroke="#fff" stroke-width="0.8" stroke-linecap="round" opacity="0.6"/></svg></div>
       <h1>聊天军师</h1>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -250,11 +250,11 @@ body{
       <button class="chip" onclick="loadExample(2)">不知道聊什么</button>
       <button class="chip" onclick="loadExample(3)">她发了自拍</button>
     </div>
-    <div class="action-bar">
+    <div class="action-bar" style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;padding:0 16px">
+      <button class="btn btn-ghost" onclick="clearAll()">清空</button>
       <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()" disabled>
         🔍 分析聊天
       </button>
-      <button class="btn btn-ghost" onclick="clearAll()">清空</button>
     </div>
   </div>
 
@@ -283,7 +283,7 @@ body{
 
   <!-- Empty State -->
   <div class="empty-state" id="emptyState">
-    <div class="icon">🗡️</div>
+    <div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C12 2 8 6 8 10C8 11 8.5 13 9 14L12 22L15 14C15.5 13 16 11 16 10C16 6 12 2 12 2Z" stroke="#818cf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 14L12 8" stroke="#818cf8" stroke-width="1.2" stroke-linecap="round"/><line x1="12" y1="4" x2="6" y2="8" stroke="#818cf8" stroke-width="0.8" stroke-linecap="round" opacity="0.4"/><line x1="12" y1="4" x2="12" y2="7" stroke="#818cf8" stroke-width="1" stroke-linecap="round" opacity="0.5"/><line x1="12" y1="4" x2="18" y2="8" stroke="#818cf8" stroke-width="0.8" stroke-linecap="round" opacity="0.4"/></svg></div>
     <p>粘贴聊天记录，<br>让我帮你分析局势、生成回复建议</p>
   </div>
 </div>
