@@ -1162,7 +1162,7 @@ async function assignChatRoles(data, file){
   const rawText = data.text || '';
   if(lines.length === 0) return rawText;
   
-  // Build line metadata
+  // Build line metadata with x0 positions
   const lineData = [];
   for(const line of lines){
     if(!line.bbox || !line.text || line.text.trim().length === 0) continue;
@@ -1177,22 +1177,18 @@ async function assignChatRoles(data, file){
   }
   if(lineData.length === 0) return rawText;
   
-  // Load image for color-based bubble detection
+  // Load actual image size for accurate cutoff
   const img = await loadImageForColor(file);
   const maxX = img ? img.width : Math.max(...lineData.map(l => l.x1));
   const maxY = img ? img.height : Math.max(...lineData.map(l => l.y1));
   
-  // Position-based split as fallback
-  const x0s = lineData.map(l => l.x0).sort((a,b)=>a-b);
-  let bestGap = 0, splitPoint = maxX * 0.42;
-  for(let i=0; i<x0s.length-1; i++){
-    const mid = (x0s[i] + x0s[i+1]) / 2;
-    if(mid > maxX * 0.2 && mid < maxX * 0.7){
-      const gap = x0s[i+1] - x0s[i];
-      if(gap > bestGap && gap > maxX * 0.04){ bestGap = gap; splitPoint = mid; }
-    }
-  }
+  // WeChat layout: left bubbles (对方) text x0 = 5-20% width, right bubbles (我) x0 = 38-55% width
+  // Key insight: right-side text x0 ALWAYS > 35% of screen width
+  // Use 30% as split - lines with x0 > 30% are right-side (我)
+  const splitPct = 0.30;
+  const splitX = maxX * splitPct;
   
+  // Cutoff zones (pixel-based, using actual image height)
   const topCutoff = maxY * 0.07;
   const headerCutoff = maxY * 0.18;
   const bottomCutoff = maxY * 0.84;
@@ -1201,15 +1197,15 @@ async function assignChatRoles(data, file){
   let lastSide = '', lastText = '';
   
   for(const l of lineData){
+    // Skip non-chat areas
     if(l.y1 < topCutoff || (l.y0 < headerCutoff && l.y0 >= topCutoff) || l.y0 > bottomCutoff) continue;
     
-    // Priority 1: Color-based detection
-    let isRight = null;
-    if(img) isRight = detectSideByColor(img, l);
-    // Priority 2: Position-based
-    if(isRight === null) isRight = l.xc > splitPoint;
-    
+    // Position-based: x0 determines side
+    // Left bubbles start near the left edge (after avatar ~6-10%)
+    // Right bubbles start much further right (~38-50%)
+    const isRight = l.x0 > splitX;
     const side = isRight ? '我' : '对方';
+    
     if(side === lastSide){ lastText += l.text; }
     else { if(lastText) outputLines.push(lastSide + '：' + lastText); lastSide = side; lastText = l.text; }
   }
