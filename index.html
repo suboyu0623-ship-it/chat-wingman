@@ -1116,45 +1116,29 @@ function loadImageForColor(file){
   });
 }
 
-function isGreenPixel(r,g,b){
-  // WeChat green bubble: high green component, low red/blue
-  return g > 120 && g > r * 1.2 && g > b * 1.3;
-}
-
-function isWhiteOrGray(r,g,b){
-  // White/gray bubble: all channels close together
-  const max = Math.max(r,g,b), min = Math.min(r,g,b);
-  return max - min < 30 && min > 180;
+function isGreenBubble(r,g,b){
+  // WeChat dark mode green bubble: G dominates, dark but clearly green
+  // Average from real samples: (70, 155, 111)
+  // But bubble edges can be darker, so lower threshold
+  return g > 40 && g > r * 1.2 && g > b * 1.2;
 }
 
 function detectSideByColor(img, l){
   if(!img) return null;
-  // Sample pixel just to the right of text (bubble area)
-  const sx = Math.min(Math.round(l.x1) + 8, img.width - 1);
-  const sy = Math.min(Math.round(l.y0 + l.y1) / 2, img.height - 1);
+  // Sample just to the RIGHT of the text line → bubble area
+  const sx = Math.min(Math.round(l.x1) + 6, img.width - 1);
+  const sy = Math.min(Math.round((l.y0 + l.y1) / 2), img.height - 1);
   const px = img.ctx.getImageData(sx, sy, 1, 1).data;
-  const [r,g,b] = px;
+  if(isGreenBubble(px[0], px[1], px[2])) return 'right';
   
-  if(isGreenPixel(r,g,b)) return 'right';
-  if(isWhiteOrGray(r,g,b)) return 'left';
-  
-  // Try multiple sample points along the right edge
-  for(let dy = -8; dy <= 8; dy += 4){
-    const ty = Math.max(0, Math.min(img.height-1, sy + dy));
+  // Retry: sample above and below
+  for(const dy of [-8, -4, 4, 8]){
+    const ty = Math.max(0, Math.min(img.height - 1, sy + dy));
     const p = img.ctx.getImageData(sx, ty, 1, 1).data;
-    if(isGreenPixel(p[0],p[1],p[2])) return 'right';
-    if(isWhiteOrGray(p[0],p[1],p[2])) return 'left';
+    if(isGreenBubble(p[0], p[1], p[2])) return 'right';
   }
   
-  // Try left side of text for left bubbles
-  const lx = Math.max(Math.round(l.x0) - 8, 0);
-  for(let dy = -4; dy <= 4; dy += 4){
-    const ty = Math.max(0, Math.min(img.height-1, sy + dy));
-    const p = img.ctx.getImageData(lx, ty, 1, 1).data;
-    if(isGreenPixel(p[0],p[1],p[2])) return 'right';
-  }
-  
-  return null; // Can't determine
+  return 'left'; // Not green → left side (对方)
 }
 
 async function assignChatRoles(data, file){
@@ -1162,7 +1146,6 @@ async function assignChatRoles(data, file){
   const rawText = data.text || '';
   if(lines.length === 0) return rawText;
   
-  // Build line metadata with x0 positions
   const lineData = [];
   for(const line of lines){
     if(!line.bbox || !line.text || line.text.trim().length === 0) continue;
@@ -1171,40 +1154,39 @@ async function assignChatRoles(data, file){
     lineData.push({
       text: txt,
       x0: line.bbox.x0, x1: line.bbox.x1,
-      xc: (line.bbox.x0 + line.bbox.x1) / 2,
       y0: line.bbox.y0, y1: line.bbox.y1
     });
   }
   if(lineData.length === 0) return rawText;
   
-  // Load actual image size for accurate cutoff
+  // Load actual image for color sampling
   const img = await loadImageForColor(file);
   const maxX = img ? img.width : Math.max(...lineData.map(l => l.x1));
   const maxY = img ? img.height : Math.max(...lineData.map(l => l.y1));
   
-  // WeChat layout: left bubbles (对方) text x0 = 5-20% width, right bubbles (我) x0 = 38-55% width
-  // Key insight: right-side text x0 ALWAYS > 35% of screen width
-  // Use 30% as split - lines with x0 > 30% are right-side (我)
-  const splitPct = 0.30;
-  const splitX = maxX * splitPct;
-  
-  // Cutoff zones (pixel-based, using actual image height)
+  // Cutoff zones
   const topCutoff = maxY * 0.07;
   const headerCutoff = maxY * 0.18;
   const bottomCutoff = maxY * 0.84;
+  
+  // Fallback position-based split
+  const splitX = maxX * 0.30;
   
   const outputLines = [];
   let lastSide = '', lastText = '';
   
   for(const l of lineData){
-    // Skip non-chat areas
     if(l.y1 < topCutoff || (l.y0 < headerCutoff && l.y0 >= topCutoff) || l.y0 > bottomCutoff) continue;
     
-    // Position-based: x0 determines side
-    // Left bubbles start near the left edge (after avatar ~6-10%)
-    // Right bubbles start much further right (~38-50%)
-    const isRight = l.x0 > splitX;
-    const side = isRight ? '我' : '对方';
+    // Priority 1: Color detection (sample bubble area to right of text)
+    let side;
+    if(img){
+      const colorSide = detectSideByColor(img, l);
+      side = colorSide === 'right' ? '我' : '对方';
+    } else {
+      // Priority 2: Position fallback
+      side = l.x0 > splitX ? '我' : '对方';
+    }
     
     if(side === lastSide){ lastText += l.text; }
     else { if(lastText) outputLines.push(lastSide + '：' + lastText); lastSide = side; lastText = l.text; }
