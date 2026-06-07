@@ -140,6 +140,13 @@ body{
 .token-warning{display:none;padding:10px 14px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);
   border-radius:var(--radius-sm);font-size:12px;color:var(--amber);align-items:center;gap:8px}
 .token-warning.show{display:flex}
+
+/* Profile */
+.profile-card{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(129,140,248,.04));border:1px solid rgba(99,102,241,.12)}
+.profile-card .card-header{color:var(--accent2)}
+.profile-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.profile-row.full{grid-template-columns:1fr}
+.profile-indicator{font-size:11px;padding:2px 8px;background:rgba(99,102,241,.12);color:var(--accent2);border-radius:10px;cursor:pointer;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -151,6 +158,7 @@ body{
       <h1>聊天军师</h1>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
+      <span id="profileBadge" class="profile-indicator" style="display:none" onclick="toggleSettings()">👤</span>
       <span id="tokenBadge" class="status-badge status-warn">⚙️ 未配置</span>
       <button class="icon-btn" onclick="toggleSettings()" title="设置">⚙️</button>
       <button class="icon-btn" onclick="showHistory()" title="历史">📋</button>
@@ -220,10 +228,97 @@ body{
 - 要点2</textarea>
       <div class="info-tip">可自定义系统提示词来调整回复风格</div>
     </div>
+
+    <!-- User Profile -->
+    <div class="card-header" style="margin-top:16px">👤 个人画像</div>
+    <div class="info-tip" style="margin-bottom:10px">描述你自己，分析时会自动适配你的背景和风格</div>
+    <div class="profile-row">
+      <div class="input-group">
+        <label>性别</label>
+        <select id="profileGender">
+          <option value="">请选择</option>
+          <option value="男">男</option>
+          <option value="女">女</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>年龄段/身份</label>
+        <input type="text" id="profileIdentity" placeholder="如：大四学生、上班族…">
+      </div>
+    </div>
+    <div class="profile-row" style="margin-top:8px">
+      <div class="input-group">
+        <label>性格特点</label>
+        <input type="text" id="profilePersonality" placeholder="如：内向直男、幽默开朗…">
+      </div>
+      <div class="input-group">
+        <label>当前感情状况</label>
+        <select id="profileStatus">
+          <option value="">请选择</option>
+          <option value="追求中">追求中</option>
+          <option value="暧昧中">暧昧中</option>
+          <option value="恋爱中">恋爱中</option>
+          <option value="单身想脱单">单身想脱单</option>
+          <option value="刚认识">刚认识</option>
+        </select>
+      </div>
+    </div>
+    <div class="profile-row full" style="margin-top:8px">
+      <div class="input-group">
+        <label>关于你和她的补充说明</label>
+        <textarea id="profileExtra" rows="3" placeholder="如：认识多久了、她什么性格、你想达到什么状态…"></textarea>
+        <div class="info-tip">越详细的分析越准，但不要暴露真名等隐私</div>
+      </div>
+    </div>
     <div style="margin-top:12px;display:flex;gap:8px">
       <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
       <button class="btn btn-ghost" onclick="loadDefaultPrompt()">恢复默认提示词</button>
     </div>
+  </div>
+
+  <!-- Profile Setup (first-time) -->
+  <div class="card profile-card" id="profileSetup" style="display:none">
+    <div class="card-header">👤 你是谁？</div>
+    <p style="font-size:13px;color:var(--fg2);margin-bottom:12px;line-height:1.6">介绍一下自己，军师才能给你最精准的建议。之后可在设置里修改。</p>
+    <div class="profile-row">
+      <div class="input-group">
+        <label>性别</label>
+        <select id="profileSetupGender">
+          <option value="">请选择</option>
+          <option value="男">男</option>
+          <option value="女">女</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>年龄段/身份</label>
+        <input type="text" id="profileSetupIdentity" placeholder="如：大四学生">
+      </div>
+    </div>
+    <div class="profile-row" style="margin-top:8px">
+      <div class="input-group">
+        <label>性格特点</label>
+        <input type="text" id="profileSetupPersonality" placeholder="如：内向直男">
+      </div>
+      <div class="input-group">
+        <label>感情状况</label>
+        <select id="profileSetupStatus">
+          <option value="">请选择</option>
+          <option value="追求中">追求中</option>
+          <option value="暧昧中">暧昧中</option>
+          <option value="恋爱中">恋爱中</option>
+          <option value="单身想脱单">单身想脱单</option>
+          <option value="刚认识">刚认识</option>
+        </select>
+      </div>
+    </div>
+    <div class="profile-row full" style="margin-top:8px">
+      <div class="input-group">
+        <label>补充说明（选填）</label>
+        <textarea id="profileSetupExtra" rows="2" placeholder="如：认识多久、她什么性格…"></textarea>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:8px;width:100%;justify-content:center" onclick="saveProfileSetup()">保存，开始使用</button>
+    <button class="btn btn-ghost" style="margin-top:6px;width:100%;justify-content:center" onclick="skipProfile()">跳过，以后再说</button>
   </div>
 
   <!-- Main Input -->
@@ -324,6 +419,7 @@ const el = {
   emptyState: $('emptyState'),
   charCount: $('charCount'),
   tokenBadge: $('tokenBadge'),
+  profileBadge: $('profileBadge'),
   tokenWarning: $('tokenWarning'),
   tokenLimitWarn: $('tokenLimitWarn'),
   statsBar: $('statsBar'),
@@ -331,7 +427,11 @@ const el = {
   totalCalls: $('totalCalls'),
   totalCost: $('totalCost'),
   toast: $('toast'),
-  settingsPanel: $('settingsPanel')
+  settingsPanel: $('settingsPanel'),
+  // Profile refs
+  profileSetup: $('profileSetup'),
+  pg: { gender:$('profileGender'), identity:$('profileIdentity'), personality:$('profilePersonality'), status:$('profileStatus'), extra:$('profileExtra') },
+  ps: { gender:$('profileSetupGender'), identity:$('profileSetupIdentity'), personality:$('profileSetupPersonality'), status:$('profileSetupStatus'), extra:$('profileSetupExtra') }
 };
 
 // ===== Init =====
@@ -342,7 +442,11 @@ function init(){
   el.model.value = LS.get('model','deepseek-v4-flash');
   el.systemPrompt.value = LS.get('systemPrompt',el.systemPrompt.value);
 
+  // Load profile
+  loadProfileToSettings();
+
   updateTokenBadge();
+  updateProfileBadge();
   updateStats();
   checkTokenLimit();
 
@@ -358,9 +462,12 @@ function init(){
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
   }
 
-  // Show first-run hint
+  // First-run: show API key warning or profile setup
   if(!LS.get('apiKey','')){
     el.tokenWarning.classList.add('show');
+  }
+  if(!LS.get('profile','')){
+    el.profileSetup.style.display = 'block';
   }
 }
 
@@ -375,9 +482,13 @@ function saveSettings(){
   LS.set('model', el.model.value);
   LS.set('systemPrompt', el.systemPrompt.value);
 
+  // Save profile from settings
+  saveProfileFields(el.pg);
+
   showToast('设置已保存 ✅');
   el.settingsPanel.classList.remove('open');
   updateTokenBadge();
+  updateProfileBadge();
 
   if(key) el.tokenWarning.classList.remove('show');
   el.analyzeBtn.disabled = el.chatInput.value.length < 5 || !key;
@@ -405,7 +516,77 @@ function loadDefaultPrompt(){
   showToast('已恢复默认提示词');
 }
 
-function updateTokenBadge(){
+function updateProfileBadge(){
+  const p = LS.get('profile','');
+  if(p){
+    const parts = p.split('，');
+    const summary = parts[0] || '已设置';
+    el.profileBadge.style.display = 'inline-flex';
+    el.profileBadge.textContent = '👤 ' + summary.slice(0,6);
+  } else {
+    el.profileBadge.style.display = 'none';
+  }
+}
+
+function buildProfileText(fields){
+  const parts = [];
+  if(fields.gender) parts.push('性别：' + fields.gender);
+  if(fields.identity) parts.push('身份：' + fields.identity);
+  if(fields.personality) parts.push('性格：' + fields.personality);
+  if(fields.status) parts.push('感情状况：' + fields.status);
+  if(fields.extra) parts.push('补充：' + fields.extra);
+  return parts.join('，');
+}
+
+function saveProfileFields(fields){
+  const text = buildProfileText({
+    gender: fields.gender.value,
+    identity: fields.identity.value.trim(),
+    personality: fields.personality.value.trim(),
+    status: fields.status.value,
+    extra: fields.extra.value.trim()
+  });
+  if(text) LS.set('profile', text);
+  return text;
+}
+
+function loadProfileToSettings(){
+  const p = LS.get('profile','');
+  if(!p) return;
+  // Try to parse back into fields (best-effort)
+  const m = {};
+  const parts = p.split('，');
+  parts.forEach(part=>{
+    const kv = part.split('：');
+    if(kv.length>=2){
+      const k = kv[0];
+      const v = kv.slice(1).join('：');
+      if(k==='性别') m.gender=v; else if(k==='身份') m.identity=v;
+      else if(k==='性格') m.personality=v; else if(k==='感情状况') m.status=v;
+      else if(k==='补充') m.extra=v;
+    }
+  });
+  if(m.gender) el.pg.gender.value = m.gender;
+  if(m.identity) el.pg.identity.value = m.identity;
+  if(m.personality) el.pg.personality.value = m.personality;
+  if(m.status) el.pg.status.value = m.status;
+  if(m.extra) el.pg.extra.value = m.extra;
+}
+
+function saveProfileSetup(){
+  const text = saveProfileFields(el.ps);
+  if(!text){ showToast('请至少填写性别和身份','error'); return; }
+  LS.set('profile', text);
+  el.profileSetup.style.display = 'none';
+  loadProfileToSettings();
+  updateProfileBadge();
+  showToast('画像已保存 ✅');
+}
+
+function skipProfile(){
+  el.profileSetup.style.display = 'none';
+  LS.set('profile', '用户选择了跳过');
+}
   if(LS.get('apiKey','')){
     el.tokenBadge.className = 'status-badge status-on';
     el.tokenBadge.textContent = '✅ 已配置';
@@ -455,6 +636,14 @@ async function analyze(){
   const apiKey = LS.get('apiKey','');
   const model = LS.get('model','deepseek-v4-flash');
   const systemPrompt = LS.get('systemPrompt',el.systemPrompt.value);
+  const profile = LS.get('profile','');
+  
+  // Build full system prompt with profile
+  let fullPrompt = systemPrompt;
+  if(profile && profile !== '用户选择了跳过'){
+    fullPrompt += '\n\n## 当前用户画像\n' + profile + '\n\n请根据以上用户画像调整回复的语气、风格和建议内容。';
+  }
+  
   const chatText = el.chatInput.value.trim();
 
   if(!apiKey){ showToast('请先配置 API Key','error'); toggleSettings(); return; }
@@ -479,7 +668,7 @@ async function analyze(){
       body: JSON.stringify({
         model: model,
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: fullPrompt },
           { role: 'user', content: '请分析以下聊天记录：\n\n' + chatText }
         ],
         temperature: 0.8,
