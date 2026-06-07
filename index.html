@@ -1076,14 +1076,20 @@ function assignChatRoles(data, file){
   const words = data.words || [];
   if(words.length === 0) return data.text || '';
   
-  let maxX = 0;
-  words.forEach(w => { if(w.bbox && w.bbox.x1 > maxX) maxX = w.bbox.x1; });
+  let maxX = 0, maxY = 0;
+  words.forEach(w => {
+    if(w.bbox && w.bbox.x1 > maxX) maxX = w.bbox.x1;
+    if(w.bbox && w.bbox.y1 > maxY) maxY = w.bbox.y1;
+  });
   if(maxX === 0) return data.text || '';
   
   const midline = maxX / 2;
+  const bottomCutoff = maxY * 0.88; // Ignore bottom 12% (toolbar/input area)
   const lineGroups = [];
   words.forEach(w => {
     if(!w.bbox || !w.text || w.text.trim().length === 0) return;
+    // Skip bottom toolbar area
+    if(w.bbox.y0 > bottomCutoff) return;
     const y = Math.round(w.bbox.y0 / 15) * 15;
     const x = (w.bbox.x0 + w.bbox.x1) / 2;
     let found = false;
