@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="聊天军师">
 <link rel="manifest" href="./manifest.json">
 <title>聊天军师</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@6/dist/tesseract.min.js"></script>
 <style>
 *,::before,::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -140,6 +141,26 @@ body{
 .token-warning{display:none;padding:10px 14px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);
   border-radius:var(--radius-sm);font-size:12px;color:var(--amber);align-items:center;gap:8px}
 .token-warning.show{display:flex}
+
+/* OCR */
+.ocr-area{display:none;border:2px dashed var(--bg3);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:12px}
+.ocr-area.show{display:block}
+.ocr-area:hover,.ocr-area.drag{border-color:var(--accent);background:rgba(99,102,241,.05)}
+.ocr-area .ocr-icon{font-size:32px;margin-bottom:6px}
+.ocr-area .ocr-hint{font-size:12px;color:var(--fg2)}
+.ocr-area .ocr-sub{font-size:10px;color:var(--fg2);margin-top:4px;opacity:.6}
+.ocr-preview{display:none;position:relative;margin-bottom:12px}
+.ocr-preview.show{display:block}
+.ocr-preview img{width:100%;max-height:300px;object-fit:contain;border-radius:var(--radius-sm);border:1px solid var(--bg3)}
+.ocr-preview .ocr-remove{position:absolute;top:6px;right:6px;width:24px;height:24px;background:var(--red);color:#fff;border:none;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ocr-progress{display:none;align-items:center;gap:8px;font-size:12px;color:var(--fg2);margin-bottom:12px;padding:8px 12px;background:var(--bg3);border-radius:var(--radius-sm)}
+.ocr-progress.show{display:flex}
+.ocr-progress .prog{flex:1;height:4px;background:var(--bg2);border-radius:2px;overflow:hidden}
+.ocr-progress .prog-bar{height:100%;background:var(--accent);transition:.3s}
+.input-toolbar{display:flex;align-items:center;gap:6px;margin-bottom:10px;padding:0 16px}
+.ocr-toggle{font-size:12px;padding:5px 10px;background:var(--bg3);border:1px solid rgba(255,255,255,.06);color:var(--fg2);border-radius:6px;cursor:pointer;transition:.15s;display:flex;align-items:center;gap:4px}
+.ocr-toggle:hover{background:var(--accent);color:#fff}
+.ocr-toggle.active{background:rgba(99,102,241,.2);color:var(--accent2);border-color:var(--accent)}
 
 /* Profile */
 .profile-card{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(129,140,248,.04));border:1px solid rgba(99,102,241,.12)}
@@ -331,6 +352,28 @@ body{
   <!-- Main Input -->
   <div class="card">
     <div class="card-header">📝 输入聊天记录</div>
+
+    <!-- OCR Section -->
+    <div class="input-toolbar">
+      <button class="ocr-toggle" id="ocrToggle" onclick="toggleOCR()">📷 识别截图</button>
+      <span style="font-size:11px;color:var(--fg2)">支持粘贴、拖拽或点击上传聊天截图</span>
+    </div>
+    <div class="ocr-area" id="ocrArea">
+      <div class="ocr-icon">📷</div>
+      <div class="ocr-hint">点击或拖拽聊天截图到这里</div>
+      <div class="ocr-sub">支持粘贴（Ctrl+V）、拖拽、点击上传 · 自动识别文字</div>
+    </div>
+    <div class="ocr-preview" id="ocrPreview">
+      <img id="ocrPreviewImg" src="" alt="预览">
+      <button class="ocr-remove" onclick="clearOCR()">✕</button>
+    </div>
+    <div class="ocr-progress" id="ocrProgress">
+      <span>🔍</span>
+      <span id="ocrProgressText">识别中...</span>
+      <div class="prog"><div class="prog-bar" id="ocrProgressBar" style="width:0%"></div></div>
+    </div>
+    <input type="file" id="ocrFileInput" accept="image/*" style="display:none" onchange="handleOCRFile(event)">
+
     <textarea class="chat-input" id="chatInput" placeholder="粘贴你和女生的聊天记录...
 
 支持格式：
@@ -438,7 +481,16 @@ const el = {
   // Profile refs
   profileSetup: $('profileSetup'),
   pg: { gender:$('profileGender'), identity:$('profileIdentity'), personality:$('profilePersonality'), status:$('profileStatus'), extra:$('profileExtra') },
-  ps: { gender:$('profileSetupGender'), identity:$('profileSetupIdentity'), personality:$('profileSetupPersonality'), status:$('profileSetupStatus'), extra:$('profileSetupExtra') }
+  ps: { gender:$('profileSetupGender'), identity:$('profileSetupIdentity'), personality:$('profileSetupPersonality'), status:$('profileSetupStatus'), extra:$('profileSetupExtra') },
+  // OCR refs
+  ocrToggle: $('ocrToggle'),
+  ocrArea: $('ocrArea'),
+  ocrPreview: $('ocrPreview'),
+  ocrPreviewImg: $('ocrPreviewImg'),
+  ocrProgress: $('ocrProgress'),
+  ocrProgressText: $('ocrProgressText'),
+  ocrProgressBar: $('ocrProgressBar'),
+  ocrFileInput: $('ocrFileInput')
 };
 
 // ===== Init =====
@@ -468,6 +520,16 @@ function init(){
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
   }
+
+  // OCR: paste events
+  document.addEventListener('paste', handlePaste);
+  // OCR: drop events
+  const app = $('app');
+  app.addEventListener('dragover', e => { e.preventDefault(); el.ocrArea.classList.add('drag'); });
+  app.addEventListener('dragleave', e => { e.preventDefault(); el.ocrArea.classList.remove('drag'); });
+  app.addEventListener('drop', e => { e.preventDefault(); el.ocrArea.classList.remove('drag'); handleDrop(e); });
+  // OCR: click upload area
+  el.ocrArea.addEventListener('click', () => el.ocrFileInput.click());
 
   // First-run: show API key warning or profile setup
   if(!LS.get('apiKey','')){
@@ -602,6 +664,91 @@ function skipProfile(){
   el.profileSetup.style.display = 'none';
   LS.set('profile', '用户选择了跳过');
 }
+
+// ===== OCR =====
+function toggleOCR(){
+  el.ocrArea.classList.toggle('show');
+  el.ocrToggle.classList.toggle('active');
+}
+
+function handleOCRFile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  showPreview(file);
+  runOCR(file);
+  el.ocrFileInput.value = '';
+}
+
+function handlePaste(e){
+  const items = e.clipboardData?.items;
+  if(!items) return;
+  for(const item of items){
+    if(item.type.startsWith('image/')){
+      e.preventDefault();
+      const file = item.getAsFile();
+      showPreview(file);
+      runOCR(file);
+      break;
+    }
+  }
+}
+
+function handleDrop(e){
+  const file = e.dataTransfer?.files[0];
+  if(file && file.type.startsWith('image/')){
+    showPreview(file);
+    runOCR(file);
+  }
+}
+
+function showPreview(file){
+  const url = URL.createObjectURL(file);
+  el.ocrPreviewImg.src = url;
+  el.ocrPreview.classList.add('show');
+}
+
+function clearOCR(){
+  el.ocrPreview.classList.remove('show');
+  el.ocrPreviewImg.src = '';
+  el.ocrProgress.classList.remove('show');
+}
+
+async function runOCR(file){
+  el.ocrProgress.classList.add('show');
+  el.ocrProgressText.textContent = '识别中...';
+  el.ocrProgressBar.style.width = '0%';
+
+  try {
+    const { data: { text } } = await Tesseract.recognize(file, 'chi_sim+eng', {
+      logger: m => {
+        if(m.status === 'recognizing text'){
+          const pct = Math.round(m.progress * 100);
+          el.ocrProgressBar.style.width = pct + '%';
+          el.ocrProgressText.textContent = '识别中 ' + pct + '%';
+        }
+      }
+    });
+
+    const cleaned = text.trim().replace(/\n{3,}/g, '\n\n');
+    if(cleaned){
+      const existing = el.chatInput.value.trim();
+      el.chatInput.value = existing ? existing + '\n\n' + cleaned : cleaned;
+      el.chatInput.dispatchEvent(new Event('input'));
+      el.chatInput.scrollIntoView({behavior:'smooth',block:'center'});
+      el.ocrProgressText.textContent = '✅ 识别完成，已填入输入框';
+      el.ocrProgressBar.style.width = '100%';
+      setTimeout(() => el.ocrProgress.classList.remove('show'), 2000);
+    } else {
+      el.ocrProgressText.textContent = '⚠️ 未识别到文字，请检查截图是否清晰';
+      setTimeout(() => el.ocrProgress.classList.remove('show'), 2500);
+    }
+  } catch(err){
+    el.ocrProgressText.textContent = '❌ 识别失败，请重试';
+    setTimeout(() => el.ocrProgress.classList.remove('show'), 2500);
+  }
+}
+
+function updateTokenBadge(){
   if(LS.get('apiKey','')){
     el.tokenBadge.className = 'status-badge status-on';
     el.tokenBadge.textContent = '✅ 已配置';
