@@ -341,6 +341,23 @@ body{
       <div style="text-align:center;color:var(--fg2);padding:16px;font-size:13px">暂无聊天对象，点击下方按钮添加</div>
     </div>
     <button class="btn btn-ghost" style="margin-top:8px;width:100%;justify-content:center" onclick="openTargetModal()">＋ 添加聊天对象</button>
+
+    <!-- Memory -->
+    <div class="card-header" style="margin-top:20px">🧠 记忆功能</div>
+    <div class="info-tip" style="margin-bottom:10px">记住你的聊天风格，让回复越来越像你本人说话</div>
+    <div class="profile-row">
+      <div class="input-group">
+        <label>记忆模式</label>
+        <select id="memoryMode">
+          <option value="on">开启 — 参考历史模仿我的风格</option>
+          <option value="off">关闭 — 不使用历史记忆</option>
+        </select>
+      </div>
+      <div class="input-group" style="display:flex;align-items:flex-end">
+        <button class="btn btn-ghost" style="width:100%" onclick="clearMemories()">🗑️ 清除全部记忆</button>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--fg2)" id="memoryStatus">当前记忆：0 条</div>
   </div>
 
   <!-- Target Selector -->
@@ -537,6 +554,7 @@ let totalCalls = LS.get('totalCalls', 0);
 let totalCost = LS.get('totalCost', 0);
 let tokenLimitReached = false;
 const TOKEN_LIMIT = 10_000_000;
+const MAX_MEMORIES = 20;
 
 // Model costs per 1M tokens (input, output) in RMB
 const MODEL_COSTS = {
@@ -567,6 +585,8 @@ const el = {
   totalCost: $('totalCost'),
   toast: $('toast'),
   settingsPanel: $('settingsPanel'),
+  memoryMode: $('memoryMode'),
+  memoryStatus: $('memoryStatus'),
   // Profile refs
   profileSetup: $('profileSetup'),
   pg: { gender:$('profileGender'), identity:$('profileIdentity'), personality:$('profilePersonality'), status:$('profileStatus'), extra:$('profileExtra') },
@@ -642,6 +662,10 @@ function init(){
   // Init targets
   initTargets();
 
+  // Init memory
+  el.memoryMode.value = LS.get('memoryMode','on');
+  updateMemoryStatus();
+
   if(!LS.get('profile','')){
     el.profileSetup.style.display = 'block';
   }
@@ -667,6 +691,8 @@ function saveSettings(){
   updateProfileBadge();
 
   if(key) el.tokenWarning.classList.remove('show');
+  // Save memory mode
+  LS.set('memoryMode', el.memoryMode.value);
   el.analyzeBtn.disabled = el.chatInput.value.length < 5 || !key;
 }
 
@@ -1017,6 +1043,43 @@ async function runOCR(file){
   }
 }
 
+// ===== Memory =====
+function addMemory(chatText){
+  const mem = LS.get('memories',[]);
+  const userLines = chatText.split('\n').filter(l => l.startsWith('我：') || l.startsWith('我:'));
+  if(userLines.length === 0 && chatText.trim()){
+    mem.push({ text: chatText.slice(0,500), time: Date.now() });
+  } else {
+    mem.push({ text: userLines.join('\n').slice(0,500), time: Date.now() });
+  }
+  while(mem.length > MAX_MEMORIES) mem.shift();
+  LS.set('memories', mem);
+  updateMemoryStatus();
+}
+
+function getMemoryContext(){
+  const mem = LS.get('memories',[]);
+  if(mem.length === 0) return '';
+  const recent = mem.slice(-5);
+  const examples = recent.map(m => m.text).filter(Boolean).join('\n\n---\n\n');
+  if(!examples) return '';
+  return '\n\n## 历史聊天风格参考\n以下是用户之前的真实聊天方式，生成回复时请模仿这种语气、用词、句式特点：\n\n' + examples + '\n\n请务必让回复听起来像是同一个人写的。';
+}
+
+function clearMemories(){
+  if(!confirm('确定清除全部记忆？此操作不可撤销。')) return;
+  LS.set('memories', []);
+  updateMemoryStatus();
+  showToast('记忆已清除 ✅');
+}
+
+function updateMemoryStatus(){
+  const mem = LS.get('memories',[]);
+  if(el.memoryStatus){
+    el.memoryStatus.textContent = '当前记忆：' + mem.length + ' 条（最多' + MAX_MEMORIES + '条）';
+  }
+}
+
 function updateTokenBadge(){
   if(LS.get('apiKey','')){
     el.tokenBadge.className = 'status-badge status-on';
@@ -1083,6 +1146,12 @@ async function analyze(){
   
   fullPrompt += '\n\n请根据以上用户画像和对象信息调整回复的语气、风格和建议内容。';
   
+  // Inject memory context
+  if(LS.get('memoryMode','on') === 'on'){
+    const mem = getMemoryContext();
+    if(mem) fullPrompt += mem;
+  }
+  
   const chatText = el.chatInput.value.trim();
 
   if(!apiKey){ showToast('请先配置 API Key','error'); toggleSettings(); return; }
@@ -1142,6 +1211,8 @@ async function analyze(){
 
     // Save history
     saveHistory(chatText, data.choices[0].message.content, model, callTokens);
+    // Save to memory store
+    addMemory(chatText);
 
     // Render
     renderResult(data.choices[0].message.content, callTokens, cost);
