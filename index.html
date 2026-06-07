@@ -310,6 +310,22 @@ body{
         <input type="text" id="profilePersonality" placeholder="如：内向直男、幽默开朗…">
       </div>
       <div class="input-group">
+        <label>MBTI 类型</label>
+        <select id="profileMBTI">
+          <option value="">未设置</option>
+          <option value="INTJ">INTJ</option><option value="INTP">INTP</option>
+          <option value="ENTJ">ENTJ</option><option value="ENTP">ENTP</option>
+          <option value="INFJ">INFJ</option><option value="INFP">INFP</option>
+          <option value="ENFJ">ENFJ</option><option value="ENFP">ENFP</option>
+          <option value="ISTJ">ISTJ</option><option value="ISFJ">ISFJ</option>
+          <option value="ESTJ">ESTJ</option><option value="ESFJ">ESFJ</option>
+          <option value="ISTP">ISTP</option><option value="ISFP">ISFP</option>
+          <option value="ESTP">ESTP</option><option value="ESFP">ESFP</option>
+        </select>
+      </div>
+    </div>
+    <div class="profile-row" style="margin-top:8px">
+      <div class="input-group">
         <label>当前感情状况</label>
         <select id="profileStatus">
           <option value="">请选择</option>
@@ -390,6 +406,22 @@ body{
         <label>性格特点</label>
         <input type="text" id="profileSetupPersonality" placeholder="如：内向直男">
       </div>
+      <div class="input-group">
+        <label>MBTI 类型</label>
+        <select id="profileSetupMBTI">
+          <option value="">未设置</option>
+          <option value="INTJ">INTJ</option><option value="INTP">INTP</option>
+          <option value="ENTJ">ENTJ</option><option value="ENTP">ENTP</option>
+          <option value="INFJ">INFJ</option><option value="INFP">INFP</option>
+          <option value="ENFJ">ENFJ</option><option value="ENFP">ENFP</option>
+          <option value="ISTJ">ISTJ</option><option value="ISFJ">ISFJ</option>
+          <option value="ESTJ">ESTJ</option><option value="ESFJ">ESFJ</option>
+          <option value="ISTP">ISTP</option><option value="ISFP">ISFP</option>
+          <option value="ESTP">ESTP</option><option value="ESFP">ESFP</option>
+        </select>
+      </div>
+    </div>
+    <div class="profile-row" style="margin-top:8px">
       <div class="input-group">
         <label>感情状况</label>
         <select id="profileSetupStatus">
@@ -526,6 +558,22 @@ body{
         <input type="text" id="targetPersonality" placeholder="如：活泼开朗、有点高冷…">
       </div>
       <div class="input-group">
+        <label>MBTI 类型</label>
+        <select id="targetMBTI">
+          <option value="">未设置</option>
+          <option value="INTJ">INTJ</option><option value="INTP">INTP</option>
+          <option value="ENTJ">ENTJ</option><option value="ENTP">ENTP</option>
+          <option value="INFJ">INFJ</option><option value="INFP">INFP</option>
+          <option value="ENFJ">ENFJ</option><option value="ENFP">ENFP</option>
+          <option value="ISTJ">ISTJ</option><option value="ISFJ">ISFJ</option>
+          <option value="ESTJ">ESTJ</option><option value="ESFJ">ESFJ</option>
+          <option value="ISTP">ISTP</option><option value="ISFP">ISFP</option>
+          <option value="ESTP">ESTP</option><option value="ESFP">ESFP</option>
+        </select>
+      </div>
+    </div>
+    <div class="profile-row" style="margin-top:8px">
+      <div class="input-group">
         <label>你的目标</label>
         <select id="targetGoal"><option value="">请选择</option><option value="升温感情">升温感情</option><option value="维持好感">维持好感</option><option value="挽回关系">挽回关系</option><option value="从朋友变恋人">从朋友变恋人</option><option value="日常聊天">日常聊天</option></select>
       </div>
@@ -591,8 +639,8 @@ const el = {
   memoryStatus: $('memoryStatus'),
   // Profile refs
   profileSetup: $('profileSetup'),
-  pg: { gender:$('profileGender'), identity:$('profileIdentity'), personality:$('profilePersonality'), status:$('profileStatus'), extra:$('profileExtra') },
-  ps: { gender:$('profileSetupGender'), identity:$('profileSetupIdentity'), personality:$('profileSetupPersonality'), status:$('profileSetupStatus'), extra:$('profileSetupExtra') },
+  pg: { gender:$('profileGender'), identity:$('profileIdentity'), personality:$('profilePersonality'), mbti:$('profileMBTI'), status:$('profileStatus'), extra:$('profileExtra') },
+  ps: { gender:$('profileSetupGender'), identity:$('profileSetupIdentity'), personality:$('profileSetupPersonality'), mbti:$('profileSetupMBTI'), status:$('profileSetupStatus'), extra:$('profileSetupExtra') },
   // OCR refs
   ocrToggle: $('ocrToggle'),
   ocrArea: $('ocrArea'),
@@ -613,6 +661,7 @@ const el = {
   targetStage: $('targetStage'),
   targetPersonality: $('targetPersonality'),
   targetGoal: $('targetGoal'),
+  targetMBTI: $('targetMBTI'),
   targetNotes: $('targetNotes')
 };
 
@@ -753,6 +802,7 @@ function buildProfileText(fields){
   if(fields.gender) parts.push('性别：' + fields.gender);
   if(fields.identity) parts.push('身份：' + fields.identity);
   if(fields.personality) parts.push('性格：' + fields.personality);
+  if(fields.mbti) parts.push('MBTI：' + fields.mbti);
   if(fields.status) parts.push('感情状况：' + fields.status);
   if(fields.extra) parts.push('补充：' + fields.extra);
   return parts.join('，');
@@ -763,6 +813,7 @@ function saveProfileFields(fields){
     gender: fields.gender.value,
     identity: fields.identity.value.trim(),
     personality: fields.personality.value.trim(),
+    mbti: fields.mbti ? fields.mbti.value : '',
     status: fields.status.value,
     extra: fields.extra.value.trim()
   });
@@ -782,13 +833,15 @@ function loadProfileToSettings(){
       const k = kv[0];
       const v = kv.slice(1).join('：');
       if(k==='性别') m.gender=v; else if(k==='身份') m.identity=v;
-      else if(k==='性格') m.personality=v; else if(k==='感情状况') m.status=v;
+      else if(k==='性格') m.personality=v; else if(k==='MBTI') m.mbti=v;
+      else if(k==='感情状况') m.status=v;
       else if(k==='补充') m.extra=v;
     }
   });
   if(m.gender) el.pg.gender.value = m.gender;
   if(m.identity) el.pg.identity.value = m.identity;
   if(m.personality) el.pg.personality.value = m.personality;
+  if(m.mbti) el.pg.mbti.value = m.mbti;
   if(m.status) el.pg.status.value = m.status;
   if(m.extra) el.pg.extra.value = m.extra;
 }
@@ -917,6 +970,7 @@ function openTargetModal(index = -1){
     el.targetGender.value = t.gender || '';
     el.targetStage.value = t.stage || '';
     el.targetPersonality.value = t.personality || '';
+    el.targetMBTI.value = t.mbti || '';
     el.targetGoal.value = t.goal || '';
     el.targetNotes.value = t.notes || '';
   } else {
@@ -925,6 +979,7 @@ function openTargetModal(index = -1){
     el.targetGender.value = '';
     el.targetStage.value = '';
     el.targetPersonality.value = '';
+    el.targetMBTI.value = '';
     el.targetGoal.value = '';
     el.targetNotes.value = '';
   }
@@ -954,6 +1009,7 @@ function saveTarget(){
     gender: el.targetGender.value,
     stage: el.targetStage.value,
     personality: el.targetPersonality.value.trim(),
+    mbti: el.targetMBTI.value,
     goal: el.targetGoal.value,
     notes: el.targetNotes.value.trim(),
     history: (idx>=0&&targets[idx]?.history)||[]
@@ -1005,7 +1061,13 @@ function getTargetPrompt(){
   if(t.gender) parts.push('性别：'+t.gender);
   if(t.stage) parts.push('关系阶段：'+t.stage);
   if(t.personality) parts.push('对方性格：'+t.personality);
+  if(t.mbti) parts.push('对方MBTI：'+t.mbti);
   if(t.goal) parts.push('你的目标：'+t.goal);
+  // MBTI compatibility hint for analyzer
+  const userMBTI = (LS.get('profile','').match(/MBTI[：:](\w{4})/)||[])[1];
+  if(userMBTI && t.mbti){
+    parts.push('\n注意：你的MBTI是'+userMBTI+'，对方是'+t.mbti+'，请根据MBTI性格匹配原理给出针对性的沟通建议');
+  }
   if(t.notes) parts.push('补充：'+t.notes);
   return '\n\n## 聊天对象信息\n' + parts.join('，') + '\n\n请根据以上对象信息，量身定制分析和回复建议。';
 }
