@@ -1,0 +1,18 @@
+{
+  "name": "聊天军师",
+  "short_name": "军师",
+  "description": "AI聊天军师 - 分析聊天记录，生成回复建议",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cmVjdCB3aWR0aD0iMjU2IiBoZWlnaHQ9IjI1NiIgcng9IjQ4IiBmaWxsPSIjNjM2NmYxIi8+PHRleHQgeD0iMTI4IiB5PSIxNzAiIGZvbnQtc2l6ZT0iMTQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPuW2hzwvdGV4dD48L3N2Zz4=",
+      "sizes": "256x256",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

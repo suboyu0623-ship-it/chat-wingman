@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#6366f1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="聊天军师">
+<link rel="manifest" href="./manifest.json">
+<title>聊天军师</title>
+<style>
+*,::before,::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f172a;--bg2:#1e293b;--bg3:#334155;--fg:#e2e8f0;--fg2:#94a3b8;
+  --accent:#6366f1;--accent2:#818cf8;--green:#22c55e;--red:#ef4444;
+  --amber:#f59e0b;--radius:12px;--radius-sm:8px
+}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--fg);-webkit-tap-highlight-color:transparent;
+  overflow-x:hidden
+}
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px}
+
+/* Layout */
+.app{max-width:540px;margin:0 auto;padding:16px;min-height:100vh;display:flex;flex-direction:column;gap:16px}
+.header{display:flex;align-items:center;justify-content:space-between;padding-top:env(safe-area-inset-top,8px)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff}
+.logo h1{font-size:18px;font-weight:700}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:none;border-radius:var(--radius-sm);
+  font-size:14px;font-weight:600;cursor:pointer;transition:.2s}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-ghost{background:var(--bg2);color:var(--fg2)}
+.btn-ghost:hover{background:var(--bg3)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.icon-btn{width:36px;height:36px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--bg2);border:none;color:var(--fg2);cursor:pointer;font-size:18px;transition:.2s}
+.icon-btn:hover{background:var(--bg3);color:var(--fg)}
+
+/* Cards */
+.card{background:var(--bg2);border-radius:var(--radius);padding:16px;border:1px solid rgba(255,255,255,.05)}
+.card-header{font-size:13px;font-weight:600;color:var(--fg2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+
+/* Settings */
+.settings-panel{display:none}
+.settings-panel.open{display:block}
+.input-group{margin-bottom:12px}
+.input-group label{display:block;font-size:12px;color:var(--fg2);margin-bottom:4px;font-weight:500}
+.input-group input,.input-group select,.input-group textarea{
+  width:100%;padding:10px 12px;background:var(--bg3);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm);
+  color:var(--fg);font-size:14px;font-family:inherit;outline:none;transition:.2s
+}
+.input-group input:focus,.input-group select:focus,.input-group textarea:focus{
+  border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.15)
+}
+.input-group select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.info-tip{font-size:11px;color:var(--fg2);margin-top:4px}
+
+/* Input area */
+.chat-input{min-height:160px;resize:vertical;line-height:1.6}
+.char-count{text-align:right;font-size:11px;color:var(--fg2);margin-top:4px}
+.action-bar{display:flex;gap:8px;margin-top:12px}
+
+/* Quick examples */
+.quick-examples{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{padding:4px 10px;background:var(--bg3);border-radius:20px;font-size:11px;color:var(--fg2);cursor:pointer;
+  border:none;transition:.2s;white-space:nowrap}
+.chip:hover{background:var(--accent);color:#fff}
+
+/* Loading */
+.loading{display:none;align-items:center;gap:10px;padding:16px;color:var(--fg2);font-size:14px}
+.loading.active{display:flex}
+.spinner{width:20px;height:20px;border:2px solid var(--bg3);border-top-color:var(--accent);border-radius:50%;
+  animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Results */
+.results{display:none;animation:fadeIn .3s}
+.results.active{display:flex;flex-direction:column;gap:12px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.result-section{background:var(--bg2);border-radius:var(--radius);overflow:hidden;border:1px solid rgba(255,255,255,.05)}
+.result-section-header{padding:10px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;
+  border-bottom:1px solid rgba(255,255,255,.04)}
+.result-section-body{padding:14px;font-size:14px;line-height:1.7;color:var(--fg);white-space:pre-wrap}
+
+.section-analysis{border-left:3px solid var(--accent)}
+.section-analysis .result-section-header{color:var(--accent2)}
+.section-reply{border-left:3px solid var(--green)}
+.section-reply .result-section-header{color:var(--green)}
+.section-warn{border-left:3px solid var(--amber)}
+.section-warn .result-section-header{color:var(--amber)}
+
+.reply-option{padding:10px 14px;margin:8px 0;background:var(--bg3);border-radius:var(--radius-sm);position:relative}
+.reply-option-label{font-size:11px;color:var(--accent2);font-weight:600;margin-bottom:4px}
+.reply-text{font-size:14px;line-height:1.6}
+.copy-btn{position:absolute;top:8px;right:8px;padding:4px 8px;font-size:11px;background:var(--bg2);color:var(--fg2);
+  border:none;border-radius:4px;cursor:pointer;transition:.15s}
+.copy-btn:hover{background:var(--accent);color:#fff}
+.copy-btn.copied{background:var(--green);color:#fff}
+
+/* History */
+.history-item{padding:12px;background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer;
+  transition:.2s;font-size:13px;line-height:1.5}
+.history-item:hover{background:var(--accent);opacity:.8}
+.history-meta{font-size:11px;color:var(--fg2);margin-bottom:4px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--accent);
+  color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;transition:.3s;z-index:100;
+  box-shadow:0 4px 20px rgba(99,102,241,.4)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.error{background:var(--red)}
+
+/* Empty state */
+.empty-state{text-align:center;padding:40px 20px;color:var(--fg2)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.empty-state p{font-size:14px;line-height:1.6}
+
+/* Stats bar */
+.stats-bar{display:flex;justify-content:center;gap:16px;font-size:11px;color:var(--fg2);padding:8px 0}
+.stats-bar span{display:flex;align-items:center;gap:4px}
+
+/* Status badge */
+.status-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 8px;border-radius:10px;font-weight:600}
+.status-on{background:rgba(34,197,94,.15);color:var(--green)}
+.status-warn{background:rgba(245,158,11,.15);color:var(--amber)}
+
+/* Token warning */
+.token-warning{display:none;padding:10px 14px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);
+  border-radius:var(--radius-sm);font-size:12px;color:var(--amber);align-items:center;gap:8px}
+.token-warning.show{display:flex}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">🗡️</div>
+      <h1>聊天军师</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span id="tokenBadge" class="status-badge status-warn">⚙️ 未配置</span>
+      <button class="icon-btn" onclick="toggleSettings()" title="设置">⚙️</button>
+      <button class="icon-btn" onclick="showHistory()" title="历史">📋</button>
+    </div>
+  </div>
+
+  <!-- Token Warning -->
+  <div class="token-warning" id="tokenWarning">
+    <span>🔑</span>
+    <span>请先配置 DeepSeek API Key</span>
+    <button class="btn btn-ghost" style="margin-left:auto;font-size:11px;padding:3px 10px" onclick="toggleSettings()">去配置</button>
+  </div>
+
+  <!-- Settings Panel -->
+  <div class="settings-panel card" id="settingsPanel">
+    <div class="card-header">⚙️ API 设置</div>
+    <div class="input-group">
+      <label>DeepSeek API Key</label>
+      <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
+      <div class="info-tip">Key 仅存储在浏览器本地，不会上传到任何服务器</div>
+    </div>
+    <div class="input-group">
+      <label>模型选择</label>
+      <select id="modelSelect">
+        <option value="deepseek-chat">DeepSeek Chat（经济均衡）</option>
+        <option value="deepseek-v4-flash" selected>DeepSeek V4 Flash（推荐 · 便宜快速）</option>
+        <option value="deepseek-v4-pro">DeepSeek V4 Pro（最强推理）</option>
+      </select>
+      <div class="info-tip">V4 Flash 性价比最高，日常聊天分析完全够用</div>
+    </div>
+    <div class="input-group">
+      <label>系统提示词</label>
+      <textarea id="systemPrompt" rows="5">你是一个专业的恋爱聊天军师，帮助男生分析聊天记录并生成回复建议。
+
+## 你的能力
+1. 分析当前聊天局势（关系阶段、女生态度、潜在问题）
+2. 生成 2-3 个不同风格的自然回复建议
+3. 提示需要注意的事项
+
+## 分析原则
+- 判断关系阶段：初识期 / 朋友期 / 暧昧期 / 追求期
+- 判断女生态度：积极回应 / 一般回应 / 冷淡回应
+- 回复必须口语化、自然、没有AI味
+- 避免油腻、查户口、舔狗、负能量、急于推进
+
+## 用户身份
+- 男生，大四学生，生物工程专业
+- 性格：比较直男，不太会聊天
+
+## 输出格式
+### 📊 局势分析
+（简短 2-3 句）
+
+### 💬 推荐回复
+
+**选项1 — 自然轻松风格**
+> xxx
+
+**选项2 — 幽默有趣风格**  
+> xxx
+
+**选项3 — 真诚温暖风格**
+> xxx
+
+### ⚠️ 注意事项
+- 要点1
+- 要点2</textarea>
+      <div class="info-tip">可自定义系统提示词来调整回复风格</div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
+      <button class="btn btn-ghost" onclick="loadDefaultPrompt()">恢复默认提示词</button>
+    </div>
+  </div>
+
+  <!-- Main Input -->
+  <div class="card">
+    <div class="card-header">📝 输入聊天记录</div>
+    <textarea class="chat-input" id="chatInput" placeholder="粘贴你和女生的聊天记录...
+
+支持格式：
+▸ 截图文字提取
+▸ 直接复制粘贴
+▸ 手动输入
+
+示例：
+她：今天加班好累啊
+我：辛苦了
+
+她：你呢在干嘛
+我：刚跑完步回来
+
+她：哇你还跑步啊"></textarea>
+    <div class="char-count" id="charCount">0 字</div>
+    <div class="quick-examples">
+      <button class="chip" onclick="loadExample(1)">她突然冷淡了</button>
+      <button class="chip" onclick="loadExample(2)">不知道聊什么</button>
+      <button class="chip" onclick="loadExample(3)">她发了自拍</button>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()" disabled>
+        🔍 分析聊天
+      </button>
+      <button class="btn btn-ghost" onclick="clearAll()">清空</button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <span>分析中...</span>
+  </div>
+
+  <!-- Token Warning @ 10M -->
+  <div class="token-warning" id="tokenLimitWarn" style="display:none;background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.2);color:var(--red)">
+    <span>⚠️</span>
+    <span>累计已消耗接近 1000 万 tokens，是否继续？</span>
+    <button class="btn" style="margin-left:auto;font-size:11px;padding:4px 12px;background:var(--red);color:#fff;border-radius:6px" onclick="resetTokenCount()">继续使用</button>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results"></div>
+
+  <!-- Stats -->
+  <div class="stats-bar" id="statsBar" style="display:none">
+    <span>📊 累计: <b id="totalTokens">0</b></span>
+    <span>📝 使用: <b id="totalCalls">0</b> 次</span>
+    <span>💰 预估费用: <b id="totalCost">¥0</b></span>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" id="emptyState">
+    <div class="icon">🗡️</div>
+    <p>粘贴聊天记录，<br>让我帮你分析局势、生成回复建议</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== Storage =====
+const LS = {
+  get(k,d){try{const v=localStorage.getItem('wm_'+k);return v?JSON.parse(v):d}catch{return d}},
+  set(k,v){try{localStorage.setItem('wm_'+k,JSON.stringify(v))}catch{}}
+};
+
+// ===== State =====
+let totalTokens = LS.get('totalTokens', 0);
+let totalCalls = LS.get('totalCalls', 0);
+let totalCost = LS.get('totalCost', 0);
+let tokenLimitReached = false;
+const TOKEN_LIMIT = 10_000_000;
+
+// Model costs per 1M tokens (input, output) in RMB
+const MODEL_COSTS = {
+  'deepseek-chat': { input: 2, output: 3 },
+  'deepseek-v4-flash': { input: 1, output: 2 },
+  'deepseek-v4-pro': { input: 12.5, output: 15 }
+};
+
+// ===== DOM refs =====
+const $ = id => document.getElementById(id);
+const el = {
+  apiKey: $('apiKey'),
+  model: $('modelSelect'),
+  systemPrompt: $('systemPrompt'),
+  chatInput: $('chatInput'),
+  analyzeBtn: $('analyzeBtn'),
+  loading: $('loading'),
+  results: $('results'),
+  emptyState: $('emptyState'),
+  charCount: $('charCount'),
+  tokenBadge: $('tokenBadge'),
+  tokenWarning: $('tokenWarning'),
+  tokenLimitWarn: $('tokenLimitWarn'),
+  statsBar: $('statsBar'),
+  totalTokens: $('totalTokens'),
+  totalCalls: $('totalCalls'),
+  totalCost: $('totalCost'),
+  toast: $('toast'),
+  settingsPanel: $('settingsPanel')
+};
+
+// ===== Init =====
+function init(){
+  // Load settings
+  const key = LS.get('apiKey','');
+  if(key) el.apiKey.value = key;
+  el.model.value = LS.get('model','deepseek-v4-flash');
+  el.systemPrompt.value = LS.get('systemPrompt',el.systemPrompt.value);
+
+  updateTokenBadge();
+  updateStats();
+  checkTokenLimit();
+
+  // Input events
+  el.chatInput.addEventListener('input',()=>{
+    const len = el.chatInput.value.length;
+    el.charCount.textContent = len + ' 字';
+    el.analyzeBtn.disabled = len < 5 || !LS.get('apiKey','');
+  });
+
+  // Register service worker
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  }
+
+  // Show first-run hint
+  if(!LS.get('apiKey','')){
+    el.tokenWarning.classList.add('show');
+  }
+}
+
+// ===== Settings =====
+function toggleSettings(){
+  el.settingsPanel.classList.toggle('open');
+}
+
+function saveSettings(){
+  const key = el.apiKey.value.trim();
+  LS.set('apiKey', key);
+  LS.set('model', el.model.value);
+  LS.set('systemPrompt', el.systemPrompt.value);
+
+  showToast('设置已保存 ✅');
+  el.settingsPanel.classList.remove('open');
+  updateTokenBadge();
+
+  if(key) el.tokenWarning.classList.remove('show');
+  el.analyzeBtn.disabled = el.chatInput.value.length < 5 || !key;
+}
+
+function loadDefaultPrompt(){
+  const d = `你是一个专业的恋爱聊天军师，帮助男生分析聊天记录并生成回复建议。
+
+## 你的能力
+1. 分析当前聊天局势（关系阶段、女生态度、潜在问题）
+2. 生成 2-3 个不同风格的自然回复建议
+3. 提示需要注意的事项
+
+## 分析原则
+- 判断关系阶段：初识期 / 朋友期 / 暧昧期 / 追求期
+- 判断女生态度：积极回应 / 一般回应 / 冷淡回应
+- 回复必须口语化、自然、没有AI味
+- 避免油腻、查户口、舔狗、负能量、急于推进
+
+## 输出格式
+### 📊 局势分析
+### 💬 推荐回复（3个选项）
+### ⚠️ 注意事项`;
+  el.systemPrompt.value = d;
+  showToast('已恢复默认提示词');
+}
+
+function updateTokenBadge(){
+  if(LS.get('apiKey','')){
+    el.tokenBadge.className = 'status-badge status-on';
+    el.tokenBadge.textContent = '✅ 已配置';
+  } else {
+    el.tokenBadge.className = 'status-badge status-warn';
+    el.tokenBadge.textContent = '⚙️ 未配置';
+  }
+}
+
+function updateStats(){
+  el.totalTokens.textContent = formatNum(totalTokens);
+  el.totalCalls.textContent = totalCalls;
+  el.totalCost.textContent = '¥' + totalCost.toFixed(2);
+  if(totalCalls > 0) el.statsBar.style.display = 'flex';
+}
+
+function formatNum(n){
+  if(n >= 1_000_000) return (n/1_000_000).toFixed(1)+'M';
+  if(n >= 1_000) return (n/1_000).toFixed(0)+'K';
+  return n.toString();
+}
+
+function checkTokenLimit(){
+  if(totalTokens >= TOKEN_LIMIT * 0.95){
+    el.tokenLimitWarn.style.display = 'flex';
+    tokenLimitReached = true;
+  }
+}
+
+function resetTokenCount(){
+  if(confirm('确认继续使用？累计 token 计数将重置为 0。')){
+    totalTokens = 0;
+    totalCalls = 0;
+    totalCost = 0;
+    tokenLimitReached = false;
+    LS.set('totalTokens', 0);
+    LS.set('totalCalls', 0);
+    LS.set('totalCost', 0);
+    el.tokenLimitWarn.style.display = 'none';
+    updateStats();
+    showToast('已重置，继续使用 ✅');
+  }
+}
+
+// ===== Analyze =====
+async function analyze(){
+  const apiKey = LS.get('apiKey','');
+  const model = LS.get('model','deepseek-v4-flash');
+  const systemPrompt = LS.get('systemPrompt',el.systemPrompt.value);
+  const chatText = el.chatInput.value.trim();
+
+  if(!apiKey){ showToast('请先配置 API Key','error'); toggleSettings(); return; }
+  if(chatText.length < 5){ showToast('聊天记录太短了~','error'); return; }
+  if(tokenLimitReached){
+    if(!confirm('已接近 1000 万 token 上限，继续吗？')) return;
+  }
+
+  // UI: loading
+  el.loading.classList.add('active');
+  el.results.classList.remove('active');
+  el.emptyState.style.display = 'none';
+  el.analyzeBtn.disabled = true;
+
+  try {
+    const resp = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: '请分析以下聊天记录：\n\n' + chatText }
+        ],
+        temperature: 0.8,
+        max_tokens: 1500,
+        stream: false
+      })
+    });
+
+    const data = await resp.json();
+
+    if(data.error){
+      throw new Error(data.error.message || 'API 错误');
+    }
+
+    // Track usage
+    const usage = data.usage || {};
+    const inputTokens = usage.prompt_tokens || 0;
+    const outputTokens = usage.completion_tokens || 0;
+    const callTokens = inputTokens + outputTokens;
+
+    totalTokens += callTokens;
+    totalCalls += 1;
+
+    const costModel = MODEL_COSTS[model] || MODEL_COSTS['deepseek-v4-flash'];
+    const cost = (inputTokens/1_000_000)*costModel.input + (outputTokens/1_000_000)*costModel.output;
+    totalCost += cost;
+
+    LS.set('totalTokens', totalTokens);
+    LS.set('totalCalls', totalCalls);
+    LS.set('totalCost', totalCost);
+    updateStats();
+
+    // Save history
+    saveHistory(chatText, data.choices[0].message.content, model, callTokens);
+
+    // Render
+    renderResult(data.choices[0].message.content, callTokens, cost);
+    checkTokenLimit();
+
+  } catch(e){
+    showToast('分析失败: ' + e.message, 'error');
+    el.emptyState.style.display = 'block';
+  }
+
+  el.loading.classList.remove('active');
+  el.analyzeBtn.disabled = false;
+}
+
+// ===== Render =====
+function renderResult(text, tokens, cost){
+  el.results.innerHTML = '';
+  el.results.classList.add('active');
+
+  // Parse sections
+  const sections = parseSections(text);
+  if(sections.length === 0){
+    // Fallback: plain text
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = '<div class="result-section-body">'+escapeHtml(text)+'</div>';
+    el.results.appendChild(div);
+  } else {
+    sections.forEach(s => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'result-section';
+
+      let cssClass = '';
+      if(s.title.includes('局势')||s.title.includes('分析')) cssClass='section-analysis';
+      else if(s.title.includes('回复')||s.title.includes('建议')||s.title.includes('选项')) cssClass='section-reply';
+      else if(s.title.includes('注意')||s.title.includes('提示')) cssClass='section-warn';
+
+      // Parse reply options
+      let bodyHtml = '';
+      if(cssClass === 'section-reply' && s.content.includes('选项')){
+        bodyHtml = parseReplyOptions(s.content);
+      } else {
+        bodyHtml = '<div class="result-section-body">'+escapeHtml(s.content)+'</div>';
+      }
+
+      wrapper.className += ' ' + cssClass;
+      wrapper.innerHTML = `
+        <div class="result-section-header">${escapeHtml(s.title)}</div>
+        ${bodyHtml}
+      `;
+      el.results.appendChild(wrapper);
+    });
+  }
+
+  // Token info
+  const info = document.createElement('div');
+  info.style.cssText = 'text-align:center;font-size:11px;color:var(--fg2);padding:8px';
+  info.textContent = `本次消耗 ${formatNum(tokens)} tokens · 约 ¥${cost.toFixed(4)}`;
+  el.results.appendChild(info);
+
+  // Scroll to results
+  el.results.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function parseSections(text){
+  const sections = [];
+  const lines = text.split('\n');
+  let currentTitle = '';
+  let currentContent = [];
+
+  for(const line of lines){
+    const match = line.match(/^#{1,4}\s*(.+)/);
+    if(match){
+      if(currentTitle){
+        sections.push({title:currentTitle, content:currentContent.join('\n').trim()});
+        currentContent = [];
+      }
+      currentTitle = match[1].trim();
+    } else if(currentTitle){
+      currentContent.push(line);
+    }
+  }
+  if(currentTitle){
+    sections.push({title:currentTitle, content:currentContent.join('\n').trim()});
+  }
+  return sections;
+}
+
+function parseReplyOptions(text){
+  // Split by "选项" or **选项**
+  const parts = text.split(/(?:\*\*)?选项\s*(\d)\s*(?:[—\-–].*?)?(?:\*\*)?(?:\n|：|:)/g);
+  if(parts.length < 3) return '<div class="result-section-body">'+escapeHtml(text)+'</div>';
+
+  let html = '';
+  for(let i=1; i<parts.length; i+=2){
+    const label = `选项${parts[i]} — ${getOptionLabel(parseInt(parts[i]))}`;
+    const content = (parts[i+1]||'').trim().replace(/^[>\s]+/gm,'').trim();
+    html += `
+      <div class="reply-option">
+        <div class="reply-option-label">${escapeHtml(label)}</div>
+        <div class="reply-text">${escapeHtml(content)}</div>
+        <button class="copy-btn" onclick="copyText(this,'${escapeAttr(content)}')">复制</button>
+      </div>`;
+  }
+  return html;
+}
+
+function getOptionLabel(n){
+  const labels = ['','自然轻松','幽默有趣','真诚温暖'];
+  return labels[n] || '';
+}
+
+// ===== Copy =====
+function copyText(btn, text){
+  navigator.clipboard.writeText(text).then(()=>{
+    btn.textContent = '已复制✅';
+    btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='复制';btn.classList.remove('copied')},1500);
+  }).catch(()=>{
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();
+    document.execCommand('copy');document.body.removeChild(ta);
+    btn.textContent = '已复制✅';btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='复制';btn.classList.remove('copied')},1500);
+  });
+}
+
+function escapeAttr(s){return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;')}
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// ===== History =====
+function saveHistory(input, output, model, tokens){
+  let h = LS.get('history',[]);
+  h.unshift({
+    input: input.slice(0,200),
+    output: output.slice(0,300),
+    model, tokens,
+    time: Date.now()
+  });
+  if(h.length > 50) h = h.slice(0,50);
+  LS.set('history',h);
+}
+
+function showHistory(){
+  const h = LS.get('history',[]);
+  if(h.length === 0){ showToast('暂无历史记录'); return; }
+
+  let html = '<div class="card"><div class="card-header">📋 历史记录</div>';
+  h.forEach((item,i)=>{
+    html += `<div class="history-item" onclick="loadHistory(${i})">
+      <div class="history-meta">${new Date(item.time).toLocaleString('zh-CN')} · ${item.model} · ${formatNum(item.tokens)} tokens</div>
+      <div>${escapeHtml(item.input.slice(0,100))}...</div>
+    </div>`;
+  });
+  html += '</div>';
+
+  el.results.innerHTML = html;
+  el.results.classList.add('active');
+  el.emptyState.style.display = 'none';
+  el.results.scrollIntoView({behavior:'smooth'});
+}
+
+function loadHistory(i){
+  const h = LS.get('history',[]);
+  if(h[i]){
+    el.chatInput.value = h[i].input;
+    el.charCount.textContent = h[i].input.length + ' 字';
+    el.analyzeBtn.disabled = false;
+    renderResult(h[i].output, h[i].tokens, 0);
+  }
+}
+
+// ===== Examples =====
+function loadExample(n){
+  const examples = {
+    1: `她：嗯嗯\n我：周末有什么安排吗\n她：在家吧\n我：不出来逛逛吗\n她：算了懒得动`,
+    2: `我：早啊\n她：早\n我：今天天气挺好的\n她：是啊\n我：(不知道说啥了)`,
+    3: `她：[发了一张自拍]\n我：好看\n她：谢谢哈哈\n我：在哪拍的呀\n她：就在家楼下`
+  };
+  el.chatInput.value = examples[n]||'';
+  el.charCount.textContent = el.chatInput.value.length + ' 字';
+  el.analyzeBtn.disabled = el.chatInput.value.length < 5 || !LS.get('apiKey','');
+}
+
+// ===== Clear =====
+function clearAll(){
+  el.chatInput.value = '';
+  el.charCount.textContent = '0 字';
+  el.results.classList.remove('active');
+  el.results.innerHTML = '';
+  el.emptyState.style.display = 'block';
+  el.analyzeBtn.disabled = true;
+}
+
+// ===== Toast =====
+let toastTimer;
+function showToast(msg, type=''){
+  clearTimeout(toastTimer);
+  el.toast.textContent = msg;
+  el.toast.className = 'toast show ' + (type||'');
+  toastTimer = setTimeout(()=>el.toast.classList.remove('show'), 2000);
+}
+
+// ===== Boot =====
+init();
+</script>
+</body>
+</html>
