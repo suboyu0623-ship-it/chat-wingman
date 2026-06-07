@@ -1084,10 +1084,16 @@ function assignChatRoles(data, file){
   if(maxX === 0) return data.text || '';
   
   const midline = maxX / 2;
+  const topCutoff = maxY * 0.07;    // Ignore top 7% (status bar)
+  const headerCutoff = maxY * 0.15; // Ignore header area up to 15% (contact name / "…")
   const bottomCutoff = maxY * 0.88; // Ignore bottom 12% (toolbar/input area)
   const lineGroups = [];
   words.forEach(w => {
     if(!w.bbox || !w.text || w.text.trim().length === 0) return;
+    // Skip top status bar area
+    if(w.bbox.y1 < topCutoff) return;
+    // Skip header area (contact name row with "…" button)
+    if(w.bbox.y0 < headerCutoff && w.bbox.y0 >= topCutoff) return;
     // Skip bottom toolbar area
     if(w.bbox.y0 > bottomCutoff) return;
     const y = Math.round(w.bbox.y0 / 15) * 15;
