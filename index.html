@@ -1125,20 +1125,23 @@ function isGreenBubble(r,g,b){
 
 function detectSideByColor(img, l){
   if(!img) return null;
-  // Sample just to the RIGHT of the text line → bubble area
-  const sx = Math.min(Math.round(l.x1) + 6, img.width - 1);
+  // Sample to the LEFT of the text start → bubble body area
+  // Green bubbles: the green body extends LEFT of the white text
+  // Gray bubbles: the left area is avatar or background (not green)
+  const sx = Math.max(Math.round(l.x0) - 10, 2);
   const sy = Math.min(Math.round((l.y0 + l.y1) / 2), img.height - 1);
+  
   const px = img.ctx.getImageData(sx, sy, 1, 1).data;
   if(isGreenBubble(px[0], px[1], px[2])) return 'right';
   
-  // Retry: sample above and below
+  // Vertical spread check (bubble body might be taller than text line)
   for(const dy of [-8, -4, 4, 8]){
     const ty = Math.max(0, Math.min(img.height - 1, sy + dy));
     const p = img.ctx.getImageData(sx, ty, 1, 1).data;
     if(isGreenBubble(p[0], p[1], p[2])) return 'right';
   }
   
-  return 'left'; // Not green → left side (对方)
+  return 'left';
 }
 
 async function assignChatRoles(data, file){
