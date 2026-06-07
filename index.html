@@ -1072,6 +1072,53 @@ function getTargetPrompt(){
   return '\n\n## 聊天对象信息\n' + parts.join('，') + '\n\n请根据以上对象信息，量身定制分析和回复建议。';
 }
 
+function cleanOCRLines(raw){
+  if(!raw) return '';
+  let lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  
+  // Step 1: Filter out lines likely from emojis/images/avatars
+  lines = lines.filter(l => {
+    if(l.length <= 1 && !/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\w]/.test(l)) return false;
+    const textChars = l.match(/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\w\s]/g);
+    if(!textChars || textChars.length < l.length * 0.3) return false;
+    if(/^[!！?？.。,，、；;：:…\-—+=_#@$%^&*()（）【】\[\]{}|\\/"'`~<>《》""''\s]+$/.test(l)) return false;
+    return true;
+  });
+  
+  if(lines.length === 0) return '';
+  
+  // Step 2: Join broken words split across lines (e.g. "打" + "车" -> "打车")
+  const merged = [];
+  let pending = '';
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i];
+    if(/^\d{1,2}:\d{2}$/.test(line)) { merged.push((pending ? pending + ' ' : '') + line); pending = ''; continue; }
+    if(pending){
+      const combined = pending + line;
+      if(pending.length <= 2 && /[\u4e00-\u9fff]/.test(pending) && /[\u4e00-\u9fff]/.test(line.charAt(0))){
+        merged.push(combined);
+        pending = '';
+      } else if(line.length <= 2 && /[\u4e00-\u9fff]/.test(line) && merged.length > 0){
+        merged[merged.length-1] += line;
+        pending = '';
+      } else {
+        if(pending.match(/[\u4e00-\u9fff]/)) merged.push(pending);
+        merged.push(line);
+        pending = '';
+      }
+    } else if(line.length <= 2 && !/^[A-Za-z0-9_\-]{2,}$/.test(line) && !/^[\p{P}\p{S}]+$/u.test(line)){
+      pending = line;
+    } else {
+      merged.push(line);
+    }
+  }
+  if(pending) merged.push(pending);
+  
+  let result = merged.join('\n');
+  result = result.replace(/\n{3,}/g, '\n\n');
+  return result.trim();
+}
+
 async function runOCR(file){
   el.ocrProgress.classList.add('show');
   el.ocrProgressText.textContent = '识别中...';
@@ -1088,7 +1135,7 @@ async function runOCR(file){
       }
     });
 
-    const cleaned = text.trim().replace(/\n{3,}/g, '\n\n');
+    const cleaned = cleanOCRLines(text);
     if(cleaned){
       const existing = el.chatInput.value.trim();
       el.chatInput.value = existing ? existing + '\n\n' + cleaned : cleaned;
